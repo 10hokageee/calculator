@@ -380,6 +380,9 @@ function calculateLoan() {
     let annuityInterestExpense = annuityTotalPayment - principal;
     let annuityOverPayment = annuityInterestExpense;
 
+    let classicTotalCost = principal + classicInterestExpense;
+    let annuityTotalCost = annuityTotalPayment;
+
     result.innerHTML = `Ежемесячный платёж (классическая схема): ${classicMonthlyPayment.toFixed(
       2
     )} грн. <br> Общие процентные расходы по кредиту (классическая схема): ${classicInterestExpense.toFixed(
@@ -470,10 +473,14 @@ function calculateLoan() {
     )} - ${lastPayment.toFixed(2)}`;
     classicInterest.innerHTML = classicInterestExpense.toFixed(2);
     classicOverpay.innerHTML = classicOverPayment.toFixed(2);
+    document.getElementById("classicTotalCost").innerHTML =
+      classicTotalCost.toFixed(2);
     classicEffective.innerHTML = (classicEffectiveRate * 100).toFixed(6);
     annuityMonthly.innerHTML = annuityMonthlyPayment.toFixed(2);
     annuityInterest.innerHTML = annuityInterestExpense.toFixed(2);
     annuityOverpay.innerHTML = annuityOverPayment.toFixed(2);
+    document.getElementById("annuityTotalCost").innerHTML =
+      annuityTotalCost.toFixed(2);
     annuityEffective.innerHTML = (annuityEffectiveRate * 100).toFixed(6);
   } else {
     result.innerHTML = "Данные указаны неверно или отсутствуют";
@@ -521,20 +528,26 @@ function clearFields() {
   let classicInterest = document.getElementById("classicInterestExpense");
   let classicOverpay = document.getElementById("classicOverpayment");
   let classicEffective = document.getElementById("classicEffectiveRate");
+  let classicTotalCost = document.getElementById("classicTotalCost");
+
   let annuityMonthly = document.getElementById("annuityMonthlyPayment");
   let annuityInterest = document.getElementById("annuityInterestExpense");
   let annuityOverpay = document.getElementById("annuityOverpayment");
   let annuityEffective = document.getElementById("annuityEffectiveRate");
-  let infoBlock = document.querySelector(".form__result");
+  let annuityTotalCost = document.getElementById("annuityTotalCost");
 
+  let infoBlock = document.querySelector(".form__result");
   classicMonthly.innerHTML = "";
   classicInterest.innerHTML = "";
   classicOverpay.innerHTML = "";
   classicEffective.innerHTML = "";
+  classicTotalCost.innerHTML = "";
+
   annuityMonthly.innerHTML = "";
   annuityInterest.innerHTML = "";
   annuityOverpay.innerHTML = "";
   annuityEffective.innerHTML = "";
+  annuityTotalCost.innerHTML = "";
 
   infoBlock.style.display = "none";
   infoBlock.innerHTML = "";
