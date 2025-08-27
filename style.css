@@ -1,0 +1,161 @@
+button {
+  padding: 0;
+  border: none;
+  margin: 0;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1230px;
+  padding: 0 15px;
+  flex-grow: 1;
+}
+
+.lang__select {
+  align-self: flex-end;
+  margin-bottom: 70px;
+}
+
+.form {
+  background-color: orange;
+  padding: 40px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  margin-bottom: 100px;
+}
+
+.form__inner {
+  display: flex;
+  justify-content: space-between;
+}
+
+.form__title {
+  margin-bottom: 50px;
+}
+
+.form__input,
+.form__list {
+  border-radius: 0;
+  border: transparent;
+  padding: 10px;
+}
+
+.form__input:not(:last-child) {
+  margin-bottom: 30px;
+}
+
+.form__label {
+  display: block;
+}
+
+.form__label:not(:last-child) {
+  margin-bottom: 9px;
+}
+
+.form__list {
+  margin-bottom: 30px;
+  max-width: 189px;
+  width: 100%;
+}
+
+.form__btn {
+  background-color: antiquewhite;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: block;
+  padding: 15px;
+  max-width: 189px;
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.form__result {
+  margin-bottom: 10px;
+}
+
+.table-container,
+.classic-table-container,
+.annuity-table-container {
+  margin-bottom: 50px;
+}
+
+.classic-table-container,
+.annuity-table-container {
+  display: none;
+}
+
+.table-btns {
+  display: flex;
+  align-items: center;
+  margin-bottom: 50px;
+  justify-content: space-between;
+}
+
+.classic__table-btn,
+.annuity__table-btn,
+.btn-clear {
+  margin-right: 20px;
+  padding: 15px 50px;
+  background-color: darkgray;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 15px;
+}
+
+.annuity__table-btn {
+  margin-right: 0;
+}
+
+.table-container {
+  background-color: antiquewhite;
+}
+
+.loan-table__item,
+.loan-table__name,
+.loan-table__classic,
+.loan-table__annuity {
+  padding: 10px;
+}
+
+.loan-table__name-list {
+  transition: color 0.3s ease-in-out, background 0.3s ease-in-out;
+}
+
+.loan-table__name-list:hover {
+  background-color: #fff;
+  color: #000;
+}
+
+#loan-table {
+  border-collapse: collapse;
+}
+
+#classic-loan-table,
+#annuity-loan-table {
+  border-collapse: collapse;
+  background-color: antiquewhite;
+}
+
+.lang__select {
+  border: none;
+  background-color: darkgray;
+  color: #fff;
+  padding: 10px 40px;
+  border-radius: 5px;
+  margin-top: 5px;
+}
+
+
