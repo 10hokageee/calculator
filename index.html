@@ -13,13 +13,13 @@
       <div class="form__inner">
         <div class="form-box">
           <label class="form__label" for="amount"
-            >Загальна вартість кредиту (грн):</label
+            >Сума кредиту (Загальна вартість кредиту (грн)):</label
           >
           <input
             class="form__input"
             type="number"
             id="amount"
-            placeholder="Укажите значение"
+            placeholder="Вкажіть значення"
           />
 
           <label class="form__label" for="interest"
@@ -29,7 +29,7 @@
             class="form__input"
             type="number"
             id="interest"
-            placeholder="Укажите значение"
+            placeholder="Вкажіть значення"
             step="0.1"
           />
 
@@ -40,7 +40,7 @@
             class="form__input"
             type="number"
             id="downpayment-percent"
-            placeholder="Укажите значение"
+            placeholder="Вкажіть значення"
             step="0.1"
             value="0"
           />
@@ -59,6 +59,19 @@
             <option value="60">5 лет</option>
           </select>
         </div>
+
+        <div class="form__right">
+          <label class="form__label" for="notary">Послуги нотаріуса (грн):</label>
+          <input placeholder="Вкажіть значення" type="number" id="notary" class="form__input" />
+
+          <label class="form__label" for="insurance">Послуги срахування (грн):</label>
+          <input placeholder="Вкажіть значення" type="number" id="insurance" class="form__input" />
+
+          <label class="form__label" for="commission"
+            >Комісія банку за надання кредиту (разово (грн)):</label
+          >
+          <input placeholder="Вкажіть значення" type="number" id="commission" class="form__input" />
+        </div>
       </div>
 
       <button class="form__btn" id="btn-result">Розрахувати</button>
@@ -74,7 +87,7 @@
             <th class="loan-table__name">Витрати на відсотки</th>
             <th class="loan-table__name">Переплата</th>
             <th class="loan-table__name">Загальні витрати за кредитом</th>
-            <th class="loan-table__name">Ефективна ставка</th>
+            <th class="loan-table__name">Реальна річна процентна ставка</th>
           </tr>
         </thead>
         <tbody>
