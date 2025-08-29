@@ -61,16 +61,35 @@
         </div>
 
         <div class="form__right">
-          <label class="form__label" for="notary">Послуги нотаріуса (грн):</label>
-          <input placeholder="Вкажіть значення" type="number" id="notary" class="form__input" />
+          <label class="form__label" for="notary"
+            >Послуги нотаріуса (грн):</label
+          >
+          <input
+            placeholder="Вкажіть значення"
+            type="number"
+            id="notary"
+            class="form__input"
+          />
 
-          <label class="form__label" for="insurance">Послуги страхування (грн):</label>
-          <input placeholder="Вкажіть значення" type="number" id="insurance" class="form__input" />
+          <label class="form__label" for="insurance"
+            >Послуги страхування (грн):</label
+          >
+          <input
+            placeholder="Вкажіть значення"
+            type="number"
+            id="insurance"
+            class="form__input"
+          />
 
           <label class="form__label" for="commission"
             >Комісія банку за надання кредиту (разово (грн)):</label
           >
-          <input placeholder="Вкажіть значення" type="number" id="commission" class="form__input" />
+          <input
+            placeholder="Вкажіть значення"
+            type="number"
+            id="commission"
+            class="form__input"
+          />
         </div>
       </div>
 
@@ -113,6 +132,9 @@
 
     <div class="table-btns">
       <button class="btn-clear" id="btn-clear">Очистити</button>
+      <button class="btn-download" id="btn-download">
+        Завантажити звіт (Excel)
+      </button>
       <button class="classic__table-btn" id="classic__table-btn">
         Класика
       </button>
@@ -151,6 +173,7 @@
       </table>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="main.js"></script>
   </body>
 </html>

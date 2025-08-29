@@ -22,7 +22,6 @@ body {
   flex-grow: 1;
 }
 
-
 .form {
   background-color: orange;
   padding: 40px;
@@ -104,7 +103,8 @@ body {
 
 .classic__table-btn,
 .annuity__table-btn,
-.btn-clear {
+.btn-clear,
+.btn-download {
   margin-right: 20px;
   padding: 15px 50px;
   background-color: darkgray;
@@ -155,5 +155,3 @@ body {
   border-radius: 5px;
   margin-top: 5px;
 }
-
-

@@ -31,7 +31,7 @@ function calculateLoan() {
     document.getElementById("downpayment-percent").value
   );
 
-  console.log(interest)
+  console.log(interest);
 
   let list = parseFloat(document.getElementById("list").value);
   let classicMonthly = document.getElementById("classicMonthlyPayment");
@@ -304,6 +304,72 @@ function clearTableRows(tableId) {
     .getElementById(tableId)
     .getElementsByTagName("tbody")[0];
   tableBody.innerHTML = "";
+}
+
+document.getElementById("btn-download").onclick = exportFullReport;
+
+function exportFullReport() {
+  let wb = XLSX.utils.book_new();
+
+  let conditions = [
+    ["Параметр", "Значення"],
+    ["Сума кредиту", document.getElementById("amount").value || "-"],
+    ["Ставка (%)", document.getElementById("interest").value || "-"],
+    [
+      "Початковий внесок (%)",
+      document.getElementById("downpayment-percent").value || "-",
+    ],
+    ["Термін (міс.)", document.getElementById("list").value || "-"],
+    ["Нотаріус", document.getElementById("notary").value || "-"],
+    ["Страхування", document.getElementById("insurance").value || "-"],
+    ["Комісія", document.getElementById("commission").value || "-"],
+  ];
+  let ws1 = XLSX.utils.aoa_to_sheet(conditions);
+  XLSX.utils.book_append_sheet(wb, ws1, "Умови");
+
+  let summary = [
+    [
+      "Тип",
+      "Щомісячний платіж",
+      "Проценти",
+      "Переплата",
+      "Вартість",
+      "Ефективна ставка",
+    ],
+    [
+      "Класика",
+      document.getElementById("classicMonthlyPayment").innerText || "-",
+      document.getElementById("classicInterestExpense").innerText || "-",
+      document.getElementById("classicOverpayment").innerText || "-",
+      document.getElementById("classicTotalCost").innerText || "-",
+      (document.getElementById("classicEffectiveRate").innerText || "-") + "%",
+    ],
+    [
+      "Ануїтет",
+      document.getElementById("annuityMonthlyPayment").innerText || "-",
+      document.getElementById("annuityInterestExpense").innerText || "-",
+      document.getElementById("annuityOverpayment").innerText || "-",
+      document.getElementById("annuityTotalCost").innerText || "-",
+      (document.getElementById("annuityEffectiveRate").innerText || "-") + "%",
+    ],
+  ];
+
+  let ws2 = XLSX.utils.aoa_to_sheet(summary);
+  XLSX.utils.book_append_sheet(wb, ws2, "Результати");
+
+  let wsClassic = XLSX.utils.table_to_sheet(
+    document.getElementById("classic-loan-table")
+  );
+
+  XLSX.utils.book_append_sheet(wb, wsClassic, "Класика");
+
+  let wsAnnuity = XLSX.utils.table_to_sheet(
+    document.getElementById("annuity-loan-table")
+  );
+
+  XLSX.utils.book_append_sheet(wb, wsAnnuity, "Ануїтет");
+
+  XLSX.writeFile(wb, "Звіт_кредит.xlsx");
 }
 
 // //gotovi
