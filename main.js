@@ -25,9 +25,14 @@ clearButton.onclick = clearFields;
 
 function calculateLoan() {
   let amount = parseFloat(document.getElementById("amount").value);
-  let interest = parseFloat(document.getElementById("interest").value);
+  let interest = parseFloat(document.getElementById("interest").value) || 0;
   let result = document.getElementById("result");
-  let downpaymentPercent = parseFloat(document.getElementById("downpayment-percent").value);
+  let downpaymentPercent = parseFloat(
+    document.getElementById("downpayment-percent").value
+  );
+
+  console.log(interest)
+
   let list = parseFloat(document.getElementById("list").value);
   let classicMonthly = document.getElementById("classicMonthlyPayment");
   let classicInterest = document.getElementById("classicInterestExpense");
@@ -39,10 +44,11 @@ function calculateLoan() {
   let annuityEffective = document.getElementById("annuityEffectiveRate");
   let infoBlock = document.querySelector(".form__result");
 
-  
   let notaryFee = parseFloat(document.getElementById("notary").value) || 0;
-  let insuranceFee = parseFloat(document.getElementById("insurance").value) || 0;
-  let commissionFee = parseFloat(document.getElementById("commission").value) || 0;
+  let insuranceFee =
+    parseFloat(document.getElementById("insurance").value) || 0;
+  let commissionFee =
+    parseFloat(document.getElementById("commission").value) || 0;
   let totalOneTimeFees = notaryFee + insuranceFee + commissionFee;
 
   let interestValue = interest;
@@ -56,8 +62,11 @@ function calculateLoan() {
   let nominalRate = interestValue / 100;
   let monthlyRate = nominalRate / 12;
   let calculatePayments = listValue;
-  let classicMonthlyPayment = principal / calculatePayments + principal * monthlyRate;
-  let annuityMonthlyPayment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -calculatePayments));
+  let classicMonthlyPayment =
+    principal / calculatePayments + principal * monthlyRate;
+  let annuityMonthlyPayment =
+    (principal * monthlyRate) /
+    (1 - Math.pow(1 + monthlyRate, -calculatePayments));
 
   let annuityEffectiveRate = Math.pow(1 + monthlyRate, 12) - 1.00046;
   let classicEffectiveRate = Math.pow(1 + monthlyRate, 12) - 1;
@@ -82,37 +91,57 @@ function calculateLoan() {
     }
 
     let classicOverPayment = classicInterestExpense + totalOneTimeFees;
-    let classicTotalCost = principal + classicInterestExpense + totalOneTimeFees;
+    let classicTotalCost =
+      principal + classicInterestExpense + totalOneTimeFees;
 
     let annuityTotalPayment = annuityMonthlyPayment * calculatePayments;
     let annuityInterestExpense = annuityTotalPayment - principal;
-
 
     let annuityOverPayment = annuityInterestExpense + totalOneTimeFees;
     let annuityTotalCost = annuityTotalPayment + totalOneTimeFees;
 
     result.innerHTML = `
-      Ежемесячный платёж (классическая схема): ${classicMonthlyPayment.toFixed(2)} грн.
-      <br> Общие процентные расходы по кредиту (классическая схема): ${classicInterestExpense.toFixed(2)} грн.
-      <br> Переплата по кредиту (классическая схема): ${classicOverPayment.toFixed(2)} грн.
-      <br> Эффективная процентная ставка (классическая схема): ${(classicEffectiveRate * 100).toFixed(6)}%
+      Ежемесячный платёж (классическая схема): ${classicMonthlyPayment.toFixed(
+        2
+      )} грн.
+      <br> Общие процентные расходы по кредиту (классическая схема): ${classicInterestExpense.toFixed(
+        2
+      )} грн.
+      <br> Загальні витрати за кредитом (классическая схема): ${classicOverPayment.toFixed(
+        2
+      )} грн.
+      <br> Эффективная процентная ставка (классическая схема): ${(
+        classicEffectiveRate * 100
+      ).toFixed(6)}%
       <br><br>
-      Ежемесячный платёж (аннуитетная схема): ${annuityMonthlyPayment.toFixed(2)} грн.
-      <br> Общие процентные расходы по кредиту (аннуитетная схема): ${annuityInterestExpense.toFixed(2)} грн.
-      <br> Переплата по кредиту (аннуитетная схема): ${annuityOverPayment.toFixed(2)} грн.
-      <br> Эффективная процентная ставка (аннуитетная схема): ${(annuityEffectiveRate * 100).toFixed(6)}%
+      Ежемесячный платёж (аннуитетная схема): ${annuityMonthlyPayment.toFixed(
+        2
+      )} грн.
+      <br> Общие процентные расходы по кредиту (аннуитетная схема): ${annuityInterestExpense.toFixed(
+        2
+      )} грн.
+      <br> Переплата по кредиту (аннуитетная схема): ${annuityOverPayment.toFixed(
+        2
+      )} грн.
+      <br> Эффективная процентная ставка (аннуитетная схема): ${(
+        annuityEffectiveRate * 100
+      ).toFixed(6)}%
     `;
 
     classicOverpay.innerHTML = classicOverPayment.toFixed(2);
-    document.getElementById("classicTotalCost").innerHTML = classicTotalCost.toFixed(2);
+    document.getElementById("classicTotalCost").innerHTML =
+      classicTotalCost.toFixed(2);
     annuityOverpay.innerHTML = annuityOverPayment.toFixed(2);
-    document.getElementById("annuityTotalCost").innerHTML = annuityTotalCost.toFixed(2);
+    document.getElementById("annuityTotalCost").innerHTML =
+      annuityTotalCost.toFixed(2);
 
     let remainingBalanceClassic = principal;
-    let classicTableBody = document.getElementById("classic-loan-table").getElementsByTagName("tbody")[0];
+    let classicTableBody = document
+      .getElementById("classic-loan-table")
+      .getElementsByTagName("tbody")[0];
     classicTableBody.innerHTML = "";
-    let firstPayment = null;
-    let lastPayment = null;
+    let classicTotalPrincipal = 0;
+    let classicTotalInterest = 0;
 
     for (let i = 0; i < calculatePayments; i++) {
       let currentDate = new Date();
@@ -123,12 +152,8 @@ function calculateLoan() {
       let monthlyPayment = principalPayment + interestPayment;
       remainingBalanceClassic -= principalPayment;
 
-      if (i === 0) {
-        firstPayment = monthlyPayment;
-      }
-      if (i === calculatePayments - 1) {
-        lastPayment = monthlyPayment;
-      }
+      classicTotalPrincipal += principalPayment;
+      classicTotalInterest += interestPayment;
 
       let row = `
         <tr class="loan-table__name-list">
@@ -136,15 +161,37 @@ function calculateLoan() {
           <td class="loan-table__item">${monthlyPayment.toFixed(2)}</td>
           <td class="loan-table__item">${principalPayment.toFixed(2)}</td>
           <td class="loan-table__item">${interestPayment.toFixed(2)}</td>
-          <td class="loan-table__item">${Math.max(remainingBalanceClassic, 0).toFixed(2)}</td>
+          <td class="loan-table__item">${Math.max(
+            remainingBalanceClassic,
+            0
+          ).toFixed(2)}</td>
         </tr>
       `;
       classicTableBody.innerHTML += row;
     }
 
+    let classicTotalRow = `
+      <tr class="loan-table__totals">
+        <td class="loan-table__item"><strong>СУМА:</strong></td>
+        <td class="loan-table__item"></td>
+        <td class="loan-table__item"><strong>${classicTotalPrincipal.toFixed(
+          2
+        )}</strong></td>
+        <td class="loan-table__item"><strong>${classicTotalInterest.toFixed(
+          2
+        )}</strong></td>
+        <td class="loan-table__item"></td>
+      </tr>
+    `;
+    classicTableBody.innerHTML += classicTotalRow;
+
     let annuityRemainingBalance = principal;
-    let annuityTableBody = document.getElementById("annuity-loan-table").getElementsByTagName("tbody")[0];
+    let annuityTableBody = document
+      .getElementById("annuity-loan-table")
+      .getElementsByTagName("tbody")[0];
     annuityTableBody.innerHTML = "";
+    let annuityTotalPrincipal = 0;
+    let annuityTotalInterest = 0;
 
     for (let i = 0; i < calculatePayments; i++) {
       let currentDate = new Date();
@@ -153,19 +200,48 @@ function calculateLoan() {
       let interestPayment = annuityRemainingBalance * monthlyRate;
       let principalPayment = annuityMonthlyPayment - interestPayment;
       annuityRemainingBalance -= principalPayment;
+
+      annuityTotalPrincipal += principalPayment;
+      annuityTotalInterest += interestPayment;
+
       let row = `
         <tr class="loan-table__name-list">
           <td class="loan-table__item">${i + 1} (${monthName})</td>
           <td class="loan-table__item">${annuityMonthlyPayment.toFixed(2)}</td>
           <td class="loan-table__item">${principalPayment.toFixed(2)}</td>
           <td class="loan-table__item">${interestPayment.toFixed(2)}</td>
-          <td class="loan-table__item">${Math.max(annuityRemainingBalance, 0).toFixed(2)}</td>
+          <td class="loan-table__item">${Math.max(
+            annuityRemainingBalance,
+            0
+          ).toFixed(2)}</td>
         </tr>
       `;
       annuityTableBody.innerHTML += row;
     }
 
-    classicMonthly.innerHTML = `${firstPayment.toFixed(2)} - ${lastPayment.toFixed(2)}`;
+    let annuityTotalRow = `
+      <tr class="loan-table__totals">
+        <td class="loan-table__item"><strong>СУМА:</strong></td>
+        <td class="loan-table__item"></td>
+        <td class="loan-table__item"><strong>${annuityTotalPrincipal.toFixed(
+          2
+        )}</strong></td>
+        <td class="loan-table__item"><strong>${annuityTotalInterest.toFixed(
+          2
+        )}</strong></td>
+        <td class="loan-table__item"></td>
+      </tr>
+    `;
+    annuityTableBody.innerHTML += annuityTotalRow;
+
+    classicMonthly.innerHTML = `${(
+      principal / calculatePayments +
+      principal * monthlyRate
+    ).toFixed(2)} - ${(
+      principal / calculatePayments +
+      (principal - ((calculatePayments - 1) * principal) / calculatePayments) *
+        monthlyRate
+    ).toFixed(2)}`;
     classicInterest.innerHTML = classicInterestExpense.toFixed(2);
     annuityMonthly.innerHTML = annuityMonthlyPayment.toFixed(2);
     annuityInterest.innerHTML = annuityInterestExpense.toFixed(2);
@@ -224,10 +300,11 @@ function clearFields() {
 }
 
 function clearTableRows(tableId) {
-  let tableBody = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+  let tableBody = document
+    .getElementById(tableId)
+    .getElementsByTagName("tbody")[0];
   tableBody.innerHTML = "";
 }
-
 
 // //gotovi
 
