@@ -1,17 +1,18 @@
 let calcButton = document.getElementById("btn-result");
+let classicBtn = document.getElementById("classic__table-btn");
+let annuityBtn = document.getElementById("annuity__table-btn");
+let annuityContainer = document.getElementById("annuity-table-container");
+let classicContainer = document.getElementById("classic-table-container");
+let clearButton = document.getElementById("btn-clear");
 
 calcButton.onclick = function (event) {
   event.preventDefault();
   const results = calculateLoan();
   if (results) {
-    document.getElementById("btn-download").onclick = () => exportFullReport(results);
+    document.getElementById("btn-download").onclick = () =>
+      exportFullReport(results);
   }
 };
-
-let classicBtn = document.getElementById("classic__table-btn");
-let annuityBtn = document.getElementById("annuity__table-btn");
-let annuityContainer = document.getElementById("annuity-table-container");
-let classicContainer = document.getElementById("classic-table-container");
 
 classicBtn.onclick = function () {
   classicContainer.style.display = "block";
@@ -23,13 +24,12 @@ annuityBtn.onclick = function () {
   classicContainer.style.display = "none";
 };
 
-let clearButton = document.getElementById("btn-clear");
 clearButton.onclick = clearFields;
 
 function calculateIRR(cashFlows) {
   const MAX_ITER = 100;
-  const PRECISION = 1e-10;
-  let guess = 0.005;
+  const PRECISION = 1e-7;
+  let guess = 0.05;
 
   for (let iter = 0; iter < MAX_ITER; iter++) {
     let npv = 0;
@@ -39,51 +39,56 @@ function calculateIRR(cashFlows) {
       npv += cashFlows[t] / denom;
       dnpv -= (t * cashFlows[t]) / (denom * (1 + guess));
     }
-    if (Math.abs(npv) < PRECISION) {
-      return guess;
-    }
-    if (dnpv === 0) {
-      break;
-    }
+    if (Math.abs(npv) < PRECISION) return guess;
+    if (dnpv === 0) break;
     guess -= npv / dnpv;
   }
   return NaN;
 }
 
+function makeMonthLabels(n) {
+  const start = new Date();
+  const startNormalized = new Date(start.getFullYear(), start.getMonth(), 1);
+
+  const labels = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(startNormalized);
+    d.setMonth(startNormalized.getMonth() + i);
+    const monthName = d.toLocaleString("uk-UA", { month: "long" });
+    const year = d.getFullYear();
+    labels.push({ date: d, label: `${monthName} ${year}` });
+  }
+  return labels;
+}
+
 function calculateLoan() {
   let amount = parseFloat(document.getElementById("amount").value);
   let interest = parseFloat(document.getElementById("interest").value) || 0;
-  let result = document.getElementById("result");
-  let downpaymentPercent = parseFloat(
-    document.getElementById("downpayment-percent").value
-  );
+  let downpaymentPercent =
+    parseFloat(document.getElementById("downpayment-percent").value) || 0;
   let list = parseFloat(document.getElementById("list").value);
-  let classicMonthly = document.getElementById("classicMonthlyPayment");
-  let classicInterest = document.getElementById("classicInterestExpense");
-  let classicOverpay = document.getElementById("classicOverpayment");
-  let classicEffective = document.getElementById("classicEffectiveRate");
-  let annuityMonthly = document.getElementById("annuityMonthlyPayment");
-  let annuityInterest = document.getElementById("annuityInterestExpense");
-  let annuityOverpay = document.getElementById("annuityOverpayment");
-  let annuityEffective = document.getElementById("annuityEffectiveRate");
-  let infoBlock = document.querySelector(".form__result");
   let notaryFee = parseFloat(document.getElementById("notary").value) || 0;
-  let insuranceFee = parseFloat(document.getElementById("insurance").value) || 0;
-  let commissionFee = parseFloat(document.getElementById("commission").value) || 0;
+  let insuranceFee =
+    parseFloat(document.getElementById("insurance").value) || 0;
+  let commissionFee =
+    parseFloat(document.getElementById("commission").value) || 0;
   let totalOneTimeFees = notaryFee + insuranceFee + commissionFee;
 
-  let principal = amount;
-  let downpayment = (downpaymentPercent / 100) * principal;
-  principal -= downpayment;
-  let monthlyRate = (interest / 100) / 12;
+  let result = document.getElementById("result");
+  let infoBlock = document.querySelector(".form__result");
 
-  if (isNaN(principal) || principal <= 0 || isNaN(list) || list <= 0) {
+  if (isNaN(amount) || amount <= 0 || isNaN(list) || list <= 0) {
     infoBlock.style.display = "block";
     infoBlock.innerHTML = "Дані вказані неправильно або відсутні";
     return;
   }
-
   infoBlock.style.display = "none";
+
+  let principal = amount;
+  let downpayment = (downpaymentPercent / 100) * principal;
+  principal -= downpayment;
+
+  let monthlyRate = interest / 100 / 12;
 
   let classicInterestExpense = 0;
   let remainingBalanceClassic = principal;
@@ -95,13 +100,14 @@ function calculateLoan() {
     let interestPayment = remainingBalanceClassic * monthlyRate;
     let principalPayment = principal / list;
     let monthlyPayment = principalPayment + interestPayment;
+
     classicPayments.push({
-      month: i + 1,
       payment: monthlyPayment,
       principal: principalPayment,
       interest: interestPayment,
-      remaining: Math.max(remainingBalanceClassic - principalPayment, 0)
+      remaining: Math.max(remainingBalanceClassic - principalPayment, 0),
     });
+
     classicInterestExpense += interestPayment;
     remainingBalanceClassic -= principalPayment;
     if (i === 0) firstClassicPayment = monthlyPayment;
@@ -110,16 +116,27 @@ function calculateLoan() {
 
   let classicOverPayment = classicInterestExpense + totalOneTimeFees;
   let classicTotalCost = principal + classicInterestExpense + totalOneTimeFees;
-  let netProceeds = principal - totalOneTimeFees;
-  let classicCashFlows = [netProceeds, ...classicPayments.map(p => -p.payment)];
-  let classicMonthlyIRR = calculateIRR(classicCashFlows);
-  let classicEffectiveRate = isNaN(classicMonthlyIRR) ? 0 : Math.pow(1 + classicMonthlyIRR, 12) - 1;
 
-  let annuityMonthlyPayment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -list));
+  let netProceeds = principal - totalOneTimeFees;
+  let classicCashFlows = [
+    netProceeds,
+    ...classicPayments.map((p) => -p.payment),
+  ];
+  let classicMonthlyIRR = calculateIRR(classicCashFlows);
+  let classicEffectiveRateVal = isNaN(classicMonthlyIRR)
+    ? 0
+    : Math.pow(1 + classicMonthlyIRR, 12) - 1;
+
+  let annuityMonthlyPayment =
+    monthlyRate === 0
+      ? principal / list
+      : (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -list));
+
   let annuityTotalPayment = annuityMonthlyPayment * list;
   let annuityInterestExpense = annuityTotalPayment - principal;
   let annuityOverPayment = annuityInterestExpense + totalOneTimeFees;
   let annuityTotalCost = annuityTotalPayment + totalOneTimeFees;
+
   let annuityPayments = [];
   let annuityRemainingBalance = principal;
   for (let i = 0; i < list; i++) {
@@ -127,129 +144,160 @@ function calculateLoan() {
     let principalPayment = annuityMonthlyPayment - interestPayment;
     annuityRemainingBalance -= principalPayment;
     annuityPayments.push({
-      month: i + 1,
       payment: annuityMonthlyPayment,
       principal: principalPayment,
       interest: interestPayment,
-      remaining: Math.max(annuityRemainingBalance, 0)
+      remaining: Math.max(annuityRemainingBalance, 0),
     });
   }
-  let annuityCashFlows = [netProceeds, ...new Array(list).fill(annuityMonthlyPayment).map(p => -p)];
+
+  let annuityCashFlows = [
+    netProceeds,
+    ...annuityPayments.map((p) => -p.payment),
+  ];
   let annuityMonthlyIRR = calculateIRR(annuityCashFlows);
-  let annuityEffectiveRate = isNaN(annuityMonthlyIRR) ? 0 : Math.pow(1 + annuityMonthlyIRR, 12) - 1;
+  let annuityEffectiveRateVal = isNaN(annuityMonthlyIRR)
+    ? 0
+    : Math.pow(1 + annuityMonthlyIRR, 12) - 1;
 
-  result.innerHTML = `
-    Ежемесячный платёж (классическая схема): ${firstClassicPayment.toFixed(2)} грн.
-    <br> Общие процентные расходы по кредиту (классическая схема): ${classicInterestExpense.toFixed(2)} грн.
-    <br> Загальні витрати за кредитом (классическая схема): ${classicOverPayment.toFixed(2)} грн.
-    <br> Эффективная процентная ставка (классическая схема): ${(classicEffectiveRate * 100).toFixed(6)}%
-    <br><br>
-    Ежемесячный платёж (аннуитетная схема): ${annuityMonthlyPayment.toFixed(2)} грн.
-    <br> Общие процентные расходы по кредиту (аннуитетная схема): ${annuityInterestExpense.toFixed(2)} грн.
-    <br> Переплата по кредиту (аннуитетная схема): ${annuityOverPayment.toFixed(2)} грн.
-    <br> Эффективная процентная ставка (аннуитетная схема): ${(annuityEffectiveRate * 100).toFixed(6)}%
-  `;
+  result.innerHTML =
+    `Щомісячний платіж (класика): ${firstClassicPayment.toFixed(2)} грн.` +
+    `<br>Процентні витрати (класика): ${classicInterestExpense.toFixed(
+      2
+    )} грн.` +
+    `<br>Загальні витрати (класика): ${classicOverPayment.toFixed(2)} грн.` +
+    `<br>Реальна річна ставка (класика): ${(
+      classicEffectiveRateVal * 100
+    ).toFixed(6)}%` +
+    `<br><br>` +
+    `Щомісячний платіж (аннуїтет): ${annuityMonthlyPayment.toFixed(2)} грн.` +
+    `<br>Процентні витрати (аннуїтет): ${annuityInterestExpense.toFixed(
+      2
+    )} грн.` +
+    `<br>Загальні витрати (аннуїтет): ${annuityOverPayment.toFixed(2)} грн.` +
+    `<br>Реальна річна ставка (аннуїтет): ${(
+      annuityEffectiveRateVal * 100
+    ).toFixed(6)}%`;
 
-  classicMonthly.innerHTML = `${firstClassicPayment.toFixed(2)} - ${lastClassicPayment.toFixed(2)}`;
-  classicInterest.innerHTML = classicInterestExpense.toFixed(2);
-  classicOverpay.innerHTML = classicOverPayment.toFixed(2);
-  document.getElementById("classicTotalCost").innerHTML = classicTotalCost.toFixed(2);
-  annuityMonthly.innerHTML = annuityMonthlyPayment.toFixed(2);
-  annuityInterest.innerHTML = annuityInterestExpense.toFixed(2);
-  annuityOverpay.innerHTML = annuityOverPayment.toFixed(2);
-  document.getElementById("annuityTotalCost").innerHTML = annuityTotalCost.toFixed(2);
-  classicEffective.innerHTML = (classicEffectiveRate * 100).toFixed(6);
-  annuityEffective.innerHTML = (annuityEffectiveRate * 100).toFixed(6);
+  document.getElementById(
+    "classicMonthlyPayment"
+  ).innerHTML = `${firstClassicPayment.toFixed(
+    2
+  )} - ${lastClassicPayment.toFixed(2)}`;
+  document.getElementById("classicInterestExpense").innerHTML =
+    classicInterestExpense.toFixed(2);
+  document.getElementById("classicOverpayment").innerHTML =
+    classicOverPayment.toFixed(2);
+  document.getElementById("classicTotalCost").innerHTML =
+    classicTotalCost.toFixed(2);
+  document.getElementById("classicEffectiveRate").innerHTML = (
+    classicEffectiveRateVal * 100
+  ).toFixed(6);
 
-  buildAmortizationTable("classic-loan-table", classicPayments);
-  buildAmortizationTable("annuity-loan-table", annuityPayments);
+  document.getElementById("annuityMonthlyPayment").innerHTML =
+    annuityMonthlyPayment.toFixed(2);
+  document.getElementById("annuityInterestExpense").innerHTML =
+    annuityInterestExpense.toFixed(2);
+  document.getElementById("annuityOverpayment").innerHTML =
+    annuityOverPayment.toFixed(2);
+  document.getElementById("annuityTotalCost").innerHTML =
+    annuityTotalCost.toFixed(2);
+  document.getElementById("annuityEffectiveRate").innerHTML = (
+    annuityEffectiveRateVal * 100
+  ).toFixed(6);
+
+  const monthLabels = makeMonthLabels(list);
+  buildAmortizationTable("classic-loan-table", classicPayments, monthLabels);
+  buildAmortizationTable("annuity-loan-table", annuityPayments, monthLabels);
 
   return {
-    amount: amount,
-    downpayment: downpayment,
-    principal: principal,
-    list: list,
-    notaryFee: notaryFee,
-    insuranceFee: insuranceFee,
-    commissionFee: commissionFee,
-    classicPayments: classicPayments,
+    amount,
+    downpayment,
+    principal,
+    list,
+    notaryFee,
+    insuranceFee,
+    commissionFee,
+    classicPayments,
     classicTotalInterest: classicInterestExpense,
-    classicOverPayment: classicOverPayment,
-    classicTotalCost: classicTotalCost,
-    classicEffectiveRate: classicEffectiveRate,
-    annuityPayments: annuityPayments,
+    classicOverPayment,
+    classicTotalCost,
+    classicEffectiveRate: classicEffectiveRateVal,
+    annuityPayments,
     annuityTotalInterest: annuityInterestExpense,
-    annuityOverPayment: annuityOverPayment,
-    annuityTotalCost: annuityTotalCost,
-    annuityEffectiveRate: annuityEffectiveRate,
+    annuityOverPayment,
+    annuityTotalCost,
+    annuityEffectiveRate: annuityEffectiveRateVal,
+    monthLabels,
   };
 }
 
-function buildAmortizationTable(tableId, payments) {
-  let tableBody = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+function buildAmortizationTable(tableId, payments, monthLabels) {
+  const tableBody = document
+    .getElementById(tableId)
+    .getElementsByTagName("tbody")[0];
   tableBody.innerHTML = "";
+
   let totalPrincipal = 0;
   let totalInterest = 0;
 
   payments.forEach((p, i) => {
-    let currentDate = new Date();
-    currentDate.setMonth(currentDate.getMonth() + i);
-    let monthName = currentDate.toLocaleString("uk-UA", { month: "long" });
     totalPrincipal += p.principal;
     totalInterest += p.interest;
 
-    let row = `
-      <tr class="loan-table__name-list">
-        <td class="loan-table__item">${p.month} (${monthName})</td>
+    const row = `<tr class="loan-table__name-list">
+        <td class="loan-table__item">${i + 1} (${monthLabels[i].label})</td>
         <td class="loan-table__item">${p.payment.toFixed(2)}</td>
         <td class="loan-table__item">${p.principal.toFixed(2)}</td>
         <td class="loan-table__item">${p.interest.toFixed(2)}</td>
         <td class="loan-table__item">${p.remaining.toFixed(2)}</td>
-      </tr>
-    `;
-    tableBody.innerHTML += row;
+      </tr>`;
+    tableBody.insertAdjacentHTML("beforeend", row);
   });
 
-  let totalRow = `
-    <tr class="loan-table__totals">
+  const totalRow = `<tr class="loan-table__totals">
       <td class="loan-table__item"><strong>СУМА:</strong></td>
       <td class="loan-table__item"></td>
-      <td class="loan-table__item"><strong>${totalPrincipal.toFixed(2)}</strong></td>
-      <td class="loan-table__item"><strong>${totalInterest.toFixed(2)}</strong></td>
+      <td class="loan-table__item"><strong>${totalPrincipal.toFixed(
+        2
+      )}</strong></td>
+      <td class="loan-table__item"><strong>${totalInterest.toFixed(
+        2
+      )}</strong></td>
       <td class="loan-table__item"></td>
-    </tr>
-  `;
-  tableBody.innerHTML += totalRow;
+    </tr>`;
+  tableBody.insertAdjacentHTML("beforeend", totalRow);
 }
 
 function clearFields() {
-  let inputs = document.querySelectorAll("input");
-  inputs.forEach((input) => {
-    input.value = "";
-  });
-  let selects = document.querySelectorAll("select");
-  selects.forEach((select) => {
-    select.value = "";
-  });
-  let result = document.getElementById("result");
-  result.innerHTML = "";
-  let elementsToClear = [
-    "classicMonthlyPayment", "classicInterestExpense", "classicOverpayment", "classicEffectiveRate", "classicTotalCost",
-    "annuityMonthlyPayment", "annuityInterestExpense", "annuityOverpayment", "annuityEffectiveRate", "annuityTotalCost"
-  ];
-  elementsToClear.forEach(id => {
-    document.getElementById(id).innerHTML = "";
-  });
+  document.querySelectorAll("input").forEach((input) => (input.value = ""));
+  document.getElementById("list").value = "12";
+  document.getElementById("result").innerHTML = "";
+
+  [
+    "classicMonthlyPayment",
+    "classicInterestExpense",
+    "classicOverpayment",
+    "classicEffectiveRate",
+    "classicTotalCost",
+    "annuityMonthlyPayment",
+    "annuityInterestExpense",
+    "annuityOverpayment",
+    "annuityEffectiveRate",
+    "annuityTotalCost",
+  ].forEach((id) => (document.getElementById(id).innerHTML = ""));
+
   let infoBlock = document.querySelector(".form__result");
   infoBlock.style.display = "none";
   infoBlock.innerHTML = "";
+
   clearTableRows("classic-loan-table");
   clearTableRows("annuity-loan-table");
 }
 
 function clearTableRows(tableId) {
-  let tableBody = document.getElementById(tableId).getElementsByTagName("tbody")[0];
-  tableBody.innerHTML = "";
+  document.getElementById(tableId).getElementsByTagName("tbody")[0].innerHTML =
+    "";
 }
 
 function exportFullReport(data) {
@@ -261,85 +309,150 @@ function exportFullReport(data) {
     Object.assign(ws[cellRef].s, style);
   }
 
-  let classicRows = [];
-  
-
-  classicRows.push(["", "Таблиця обчислення загальної вартості кредиту для споживача"]);
-
-  classicRows.push([
-    "№ з/п", "Кількість днів у розрахунковому періоді", "Сума видачі кредиту / розрахункова дата платежу",
-    "Чист сума кредиту за договором / загальний кредит", "Сума платежу за розрахунковий період, грн.", 
-    "Проценти", "Види платежів за додаткові та супутні послуги", "Реальна річна процентна ставка, %", "Загальна вартість кредиту, грн."
-  ]);
-
-  classicRows.push([
-    "", "", "", "", "",
-    "Сума за користування кредитом", "Сума за обслуговування заборгованості",
-    "Кредитодавця", "", "Кредитного посередника", "",
-    "Третіх осіб", "", "", "", "", ""
-  ]);
-
-  classicRows.push([
-    "№", "Кількість днів у розрахунковому періоді", "Дата платежу", "Сума кредиту", "Сума платежу", "Проценти", "",
-    "За обслуговування", "Комісія", "Інші послуги", "Комісія", "Інші збір",
-    "Послуги нотаріуса", "Послуги страхування", "Послуги оцінювача", "Інші послуги",
-    "Реальна річна процентна ставка", "Загальна вартість кредиту"
-  ]);
-
-  classicRows.push([
-    1, "", new Date(), data.principal, "", "", "",
-    0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
-    data.classicEffectiveRate * 100, data.classicTotalCost
-  ]);
-
-  let startDate = new Date();
-  data.classicPayments.forEach((p, i) => {
-    let paymentDate = new Date(startDate);
-    paymentDate.setMonth(paymentDate.getMonth() + i + 1);
-    let row = [
-      p.month + 1,
-      "", 
-      paymentDate, 
-      p.remaining, 
-      p.payment, 
-      p.interest, 
-      "", 
-      "", "", "", "", "", 
-      "", "", "", "", 
-      "", "" 
-    ];
-    classicRows.push(row);
-  });
-
-  classicRows.push([
-    "СУМА", "", "", data.principal, "",
-    data.classicTotalInterest, "", 0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
-    "", data.classicTotalCost
-  ]);
-
-  let wsClassic = XLSX.utils.aoa_to_sheet(classicRows);
-
   const BOLD_STYLE = { font: { bold: true } };
   const BORDER_STYLE = {
     top: { style: "thin" },
     bottom: { style: "thin" },
     left: { style: "thin" },
-    right: { style: "thin" }
+    right: { style: "thin" },
   };
   const HEADER_STYLE = {
     font: { bold: true },
-    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-    border: BORDER_STYLE
+    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    border: BORDER_STYLE,
   };
-  const TOTAL_STYLE = {
-    font: { bold: true },
-    border: BORDER_STYLE
-  };
+  const TOTAL_STYLE = { font: { bold: true }, border: BORDER_STYLE };
   const DATA_STYLE = { border: BORDER_STYLE };
 
+  const scheduleDates = data.monthLabels.map((m) => m.date);
+
+  let classicRows = [];
+  classicRows.push([
+    "",
+    "Таблиця обчислення загальної вартості кредиту для споживача",
+  ]);
+  classicRows.push([
+    "№ з/п",
+    "Кількість днів у розрахунковому періоді",
+    "Сума видачі кредиту / розрахункова дата платежу",
+    "Чиста сума кредиту / загальний кредит",
+    "Сума платежу за період, грн",
+    "Проценти",
+    "Види платежів за додаткові та супутні послуги",
+    "Реальна річна ставка, %",
+    "Загальна вартість кредиту, грн",
+  ]);
+  classicRows.push([
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Сума за користування кредитом",
+    "Сума за обслуговування заборгованості",
+    "Кредитодавця",
+    "",
+    "Кредитного посередника",
+    "",
+    "Третіх осіб",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  classicRows.push([
+    "№",
+    "К-ть днів",
+    "Дата платежу",
+    "Сума кредиту",
+    "Сума платежу",
+    "Проценти",
+    "",
+    "За обслуговування",
+    "Комісія",
+    "Інші послуги",
+    "Комісія",
+    "Інший збір",
+    "Нотаріус",
+    "Страхування",
+    "Оцінювач",
+    "Інші",
+    "Реальна річна ставка",
+    "Загальна вартість",
+  ]);
+
+  classicRows.push([
+    1,
+    "",
+    new Date(),
+    data.principal,
+    "",
+    "",
+    "",
+    0,
+    data.commissionFee,
+    0,
+    0,
+    0,
+    data.notaryFee,
+    data.insuranceFee,
+    0,
+    0,
+    data.classicEffectiveRate * 100,
+    data.classicTotalCost,
+  ]);
+
+  data.classicPayments.forEach((p, i) => {
+    const paymentDate = scheduleDates[i];
+    classicRows.push([
+      i + 2,
+      "",
+      paymentDate,
+      p.remaining,
+      p.payment,
+      p.interest,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ]);
+  });
+
+  classicRows.push([
+    "СУМА",
+    "",
+    "",
+    data.principal,
+    "",
+    data.classicTotalInterest,
+    "",
+    0,
+    data.commissionFee,
+    0,
+    0,
+    0,
+    data.notaryFee,
+    data.insuranceFee,
+    0,
+    0,
+    "",
+    data.classicTotalCost,
+  ]);
+
+  let wsClassic = XLSX.utils.aoa_to_sheet(classicRows);
+
   const headerRows = [0, 1, 2, 3];
-  headerRows.forEach(R => {
-    const range = XLSX.utils.decode_range(wsClassic['!ref']);
+  headerRows.forEach((R) => {
+    const range = XLSX.utils.decode_range(wsClassic["!ref"]);
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       setCellStyle(wsClassic, cellRef, HEADER_STYLE);
@@ -347,26 +460,28 @@ function exportFullReport(data) {
   });
 
   const dataStartRow = 4;
-  const totalRow = classicRows.length - 1;
-  const range = XLSX.utils.decode_range(wsClassic['!ref']);
-  for (let R = dataStartRow; R < classicRows.length; ++R) {
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-      if (wsClassic[cellRef]) {
-        if (R === totalRow) {
-          setCellStyle(wsClassic, cellRef, TOTAL_STYLE);
-        } else {
-          setCellStyle(wsClassic, cellRef, DATA_STYLE);
+  const totalRowClassic = classicRows.length - 1;
+  {
+    const range = XLSX.utils.decode_range(wsClassic["!ref"]);
+    for (let R = dataStartRow; R < classicRows.length; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        if (wsClassic[cellRef]) {
+          setCellStyle(
+            wsClassic,
+            cellRef,
+            R === totalRowClassic ? TOTAL_STYLE : DATA_STYLE
+          );
         }
       }
     }
-  }
 
-  for (let R = dataStartRow; R < totalRow; ++R) {
-    const cellRef = XLSX.utils.encode_cell({ r: R, c: 2 });
-    if (wsClassic[cellRef]) {
-      wsClassic[cellRef].t = 'n'; 
-      wsClassic[cellRef].z = 'yyyy-mm-dd';
+    for (let R = dataStartRow; R < totalRowClassic; ++R) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: 2 });
+      if (wsClassic[cellRef]) {
+        wsClassic[cellRef].t = "n";
+        wsClassic[cellRef].z = "yyyy-mm-dd";
+      }
     }
   }
 
@@ -383,86 +498,160 @@ function exportFullReport(data) {
   XLSX.utils.book_append_sheet(wb, wsClassic, "Класика");
 
   let annuityRows = [];
-  
-  annuityRows.push(["", "Таблиця обчислення загальної вартості кредиту для споживача"]);
   annuityRows.push([
-    "№ з/п", "Кількість днів у розрахунковому періоді", "Сума видачі кредиту / розрахункова дата платежу",
-    "Чист сума кредиту за договором / загальний кредит", "Сума платежу за розрахунковий період, грн.",
-    "Проценти", "Види платежів за додаткові та супутні послуги", "Реальна річна процентна ставка, %", "Загальна вартість кредиту, грн."
+    "",
+    "Таблиця обчислення загальної вартості кредиту для споживача",
   ]);
   annuityRows.push([
-    "", "", "", "", "",
-    "Сума за користування кредитом", "Сума за обслуговування заборгованості",
-    "Кредитодавця", "", "Кредитного посередника", "",
-    "Третіх осіб", "", "", "", "", ""
+    "№ з/п",
+    "Кількість днів у розрахунковому періоді",
+    "Сума видачі кредиту / розрахункова дата платежу",
+    "Чиста сума кредиту / загальний кредит",
+    "Сума платежу за період, грн",
+    "Проценти",
+    "Види платежів за додаткові та супутні послуги",
+    "Реальна річна ставка, %",
+    "Загальна вартість кредиту, грн",
   ]);
   annuityRows.push([
-    "№", "Кількість днів у розрахунковому періоді", "Дата платежу", "Сума кредиту", "Сума платежу", "Проценти", "",
-    "За обслуговування", "Комісія", "Інші послуги", "Комісія", "Інші збір",
-    "Послуги нотаріуса", "Послуги страхування", "Послуги оцінювача", "Інші послуги",
-    "Реальна річна процентна ставка", "Загальна вартість кредиту"
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Сума за користування кредитом",
+    "Сума за обслуговування заборгованості",
+    "Кредитодавця",
+    "",
+    "Кредитного посередника",
+    "",
+    "Третіх осіб",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  annuityRows.push([
+    "№",
+    "К-ть днів",
+    "Дата платежу",
+    "Сума кредиту",
+    "Сума платежу",
+    "Проценти",
+    "",
+    "За обслуговування",
+    "Комісія",
+    "Інші послуги",
+    "Комісія",
+    "Інший збір",
+    "Нотаріус",
+    "Страхування",
+    "Оцінювач",
+    "Інші",
+    "Реальна річна ставка",
+    "Загальна вартість",
   ]);
 
-
   annuityRows.push([
-    1, "", new Date(), data.principal, "", "", "",
-    0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
-    data.annuityEffectiveRate * 100, data.annuityTotalCost
+    1,
+    "",
+    new Date(),
+    data.principal,
+    "",
+    "",
+    "",
+    0,
+    data.commissionFee,
+    0,
+    0,
+    0,
+    data.notaryFee,
+    data.insuranceFee,
+    0,
+    0,
+    data.annuityEffectiveRate * 100,
+    data.annuityTotalCost,
   ]);
-
 
   data.annuityPayments.forEach((p, i) => {
-    let paymentDate = new Date(startDate);
-    paymentDate.setMonth(paymentDate.getMonth() + i + 1);
-    let row = [
-      p.month + 1, 
-      "", 
-      paymentDate, 
-      p.remaining, 
-      p.payment,
-      p.interest, 
+    const paymentDate = scheduleDates[i];
+    annuityRows.push([
+      i + 2,
       "",
-      "", "", "", "", "", 
-      "", "", "", "", 
-      "", ""
-    ];
-    annuityRows.push(row);
+      paymentDate,
+      p.remaining,
+      p.payment,
+      p.interest,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ]);
   });
 
   annuityRows.push([
-    "СУМА", "", "", data.principal, "",
-    data.annuityTotalInterest, "", 0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
-    "", data.annuityTotalCost
+    "СУМА",
+    "",
+    "",
+    data.principal,
+    "",
+    data.annuityTotalInterest,
+    "",
+    0,
+    data.commissionFee,
+    0,
+    0,
+    0,
+    data.notaryFee,
+    data.insuranceFee,
+    0,
+    0,
+    "",
+    data.annuityTotalCost,
   ]);
 
   let wsAnnuity = XLSX.utils.aoa_to_sheet(annuityRows);
 
-  headerRows.forEach(R => {
-    const range = XLSX.utils.decode_range(wsAnnuity['!ref']);
+  [0, 1, 2, 3].forEach((R) => {
+    const range = XLSX.utils.decode_range(wsAnnuity["!ref"]);
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       setCellStyle(wsAnnuity, cellRef, HEADER_STYLE);
     }
   });
 
-  for (let R = dataStartRow; R < annuityRows.length; ++R) {
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-      if (wsAnnuity[cellRef]) {
-        if (R === annuityRows.length - 1) {
-          setCellStyle(wsAnnuity, cellRef, TOTAL_STYLE);
-        } else {
-          setCellStyle(wsAnnuity, cellRef, DATA_STYLE);
+  {
+    const range = XLSX.utils.decode_range(wsAnnuity["!ref"]);
+    const dataStartRowA = 4;
+    const totalRowA = annuityRows.length - 1;
+
+    for (let R = dataStartRowA; R < annuityRows.length; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        if (wsAnnuity[cellRef]) {
+          setCellStyle(
+            wsAnnuity,
+            cellRef,
+            R === totalRowA ? TOTAL_STYLE : DATA_STYLE
+          );
         }
       }
     }
-  }
-
-  for (let R = dataStartRow; R < annuityRows.length - 1; ++R) {
-    const cellRef = XLSX.utils.encode_cell({ r: R, c: 2 });
-    if (wsAnnuity[cellRef]) {
-      wsAnnuity[cellRef].t = 'n';
-      wsAnnuity[cellRef].z = 'yyyy-mm-dd';
+    for (let R = dataStartRowA; R < totalRowA; ++R) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: 2 });
+      if (wsAnnuity[cellRef]) {
+        wsAnnuity[cellRef].t = "n";
+        wsAnnuity[cellRef].z = "yyyy-mm-dd";
+      }
     }
   }
 
@@ -481,7 +670,507 @@ function exportFullReport(data) {
   XLSX.writeFile(wb, "Приклад обчислення загальної вартості кредиту для споживача та реальної річної процентної ставки за договором про споживчий кредит.xlsx");
 }
 
-// //full table 
+// //возможный вариант
+//  let calcButton = document.getElementById("btn-result");
+
+//         calcButton.onclick = function (event) {
+//             event.preventDefault();
+//             const results = calculateLoan();
+//             if (results) {
+//                 document.getElementById("btn-download").style.display = 'block';
+//                 document.getElementById("btn-download").onclick = () => exportFullReport(results);
+//             }
+//         };
+
+//         let classicBtn = document.getElementById("classic__table-btn");
+//         let annuityBtn = document.getElementById("annuity__table-btn");
+//         let annuityContainer = document.getElementById("annuity-table-container");
+//         let classicContainer = document.getElementById("classic-table-container");
+
+//         classicBtn.onclick = function () {
+//             classicContainer.style.display = "block";
+//             annuityContainer.style.display = "none";
+//         };
+
+//         annuityBtn.onclick = function () {
+//             annuityContainer.style.display = "block";
+//             classicContainer.style.display = "none";
+//         };
+
+//         let clearButton = document.getElementById("btn-clear");
+//         clearButton.onclick = clearFields;
+
+//         // Новая функция для вычисления XIRR, аналогичная ЧИСТВНДОХ в Excel
+//         function calculateXIRR(cashFlows, dates) {
+//             const MAX_ITER = 100;
+//             const PRECISION = 1e-10;
+//             let guess = 0.1; // Начальное предположение
+
+//             for (let i = 0; i < MAX_ITER; i++) {
+//                 let npv = 0;
+//                 let dnpv = 0;
+//                 const firstDate = dates[0].getTime();
+
+//                 for (let j = 0; j < cashFlows.length; j++) {
+//                     const timeInYears = (dates[j].getTime() - firstDate) / (365 * 24 * 60 * 60 * 1000);
+//                     npv += cashFlows[j] / Math.pow(1 + guess, timeInYears);
+//                     dnpv -= (timeInYears * cashFlows[j]) / Math.pow(1 + guess, timeInYears + 1);
+//                 }
+
+//                 if (Math.abs(npv) < PRECISION) {
+//                     return guess;
+//                 }
+//                 if (dnpv === 0) {
+//                     break;
+//                 }
+//                 guess -= npv / dnpv;
+//             }
+//             return NaN;
+//         }
+
+//         function calculateLoan() {
+//             let amount = parseFloat(document.getElementById("amount").value);
+//             let interest = parseFloat(document.getElementById("interest").value) || 0;
+//             let result = document.getElementById("result");
+//             let downpaymentPercent = parseFloat(
+//                 document.getElementById("downpayment-percent").value
+//             );
+//             let list = parseFloat(document.getElementById("list").value);
+//             let classicMonthly = document.getElementById("classicMonthlyPayment");
+//             let classicInterest = document.getElementById("classicInterestExpense");
+//             let classicOverpay = document.getElementById("classicOverpayment");
+//             let classicEffective = document.getElementById("classicEffectiveRate");
+//             let annuityMonthly = document.getElementById("annuityMonthlyPayment");
+//             let annuityInterest = document.getElementById("annuityInterestExpense");
+//             let annuityOverpay = document.getElementById("annuityOverpayment");
+//             let annuityEffective = document.getElementById("annuityEffectiveRate");
+//             let infoBlock = document.querySelector(".form__result");
+//             let notaryFee = parseFloat(document.getElementById("notary").value) || 0;
+//             let insuranceFee = parseFloat(document.getElementById("insurance").value) || 0;
+//             let commissionFee = parseFloat(document.getElementById("commission").value) || 0;
+//             let totalOneTimeFees = notaryFee + insuranceFee + commissionFee;
+
+//             let principal = amount;
+//             let downpayment = (downpaymentPercent / 100) * principal;
+//             principal -= downpayment;
+//             let monthlyRate = (interest / 100) / 12;
+
+//             if (isNaN(principal) || principal <= 0 || isNaN(list) || list <= 0) {
+//                 infoBlock.style.display = "block";
+//                 infoBlock.innerHTML = "Дані вказані неправильно або відсутні";
+//                 return;
+//             }
+
+//             infoBlock.style.display = "none";
+//             document.getElementById("btn-download").style.display = 'block';
+
+//             let classicInterestExpense = 0;
+//             let remainingBalanceClassic = principal;
+//             let classicPayments = [];
+//             let classicDates = [new Date()];
+//             // Исправлено: начальный денежный поток - это получение кредита минус разовые сборы
+//             let classicCashFlows = [principal - totalOneTimeFees];
+//             let firstClassicPayment = 0;
+//             let lastClassicPayment = 0;
+
+//             for (let i = 0; i < list; i++) {
+//                 let interestPayment = remainingBalanceClassic * monthlyRate;
+//                 let principalPayment = principal / list;
+//                 let monthlyPayment = principalPayment + interestPayment;
+//                 classicPayments.push({
+//                     month: i + 1,
+//                     payment: monthlyPayment,
+//                     principal: principalPayment,
+//                     interest: interestPayment,
+//                     remaining: Math.max(remainingBalanceClassic - principalPayment, 0)
+//                 });
+//                 classicInterestExpense += interestPayment;
+//                 remainingBalanceClassic -= principalPayment;
+//                 if (i === 0) firstClassicPayment = monthlyPayment;
+//                 if (i === list - 1) lastClassicPayment = monthlyPayment;
+//                 // Все платежи теперь отрицательные, так как это денежный отток
+//                 classicCashFlows.push(-monthlyPayment);
+//                 let paymentDate = new Date();
+//                 paymentDate.setMonth(paymentDate.getMonth() + i + 1);
+//                 classicDates.push(paymentDate);
+//             }
+
+//             let classicOverPayment = classicInterestExpense + totalOneTimeFees;
+//             let classicTotalCost = principal + classicInterestExpense + totalOneTimeFees;
+//             let classicEffectiveRate = calculateXIRR(classicCashFlows, classicDates);
+
+//             let annuityMonthlyPayment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -list));
+//             let annuityTotalPayment = annuityMonthlyPayment * list;
+//             let annuityInterestExpense = annuityTotalPayment - principal;
+//             let annuityOverPayment = annuityInterestExpense + totalOneTimeFees;
+//             let annuityTotalCost = annuityTotalPayment + totalOneTimeFees;
+//             let annuityPayments = [];
+//             let annuityRemainingBalance = principal;
+//             // Исправлено: начальный денежный поток - это получение кредита минус разовые сборы
+//             let annuityCashFlows = [principal - totalOneTimeFees];
+//             let annuityDates = [new Date()];
+//             for (let i = 0; i < list; i++) {
+//                 let interestPayment = annuityRemainingBalance * monthlyRate;
+//                 let principalPayment = annuityMonthlyPayment - interestPayment;
+//                 annuityRemainingBalance -= principalPayment;
+//                 annuityPayments.push({
+//                     month: i + 1,
+//                     payment: annuityMonthlyPayment,
+//                     principal: principalPayment,
+//                     interest: interestPayment,
+//                     remaining: Math.max(annuityRemainingBalance, 0)
+//                 });
+//                 // Все платежи теперь отрицательные, так как это денежный отток
+//                 annuityCashFlows.push(-annuityMonthlyPayment);
+//                 let paymentDate = new Date();
+//                 paymentDate.setMonth(paymentDate.getMonth() + i + 1);
+//                 annuityDates.push(paymentDate);
+//             }
+//             let annuityEffectiveRate = calculateXIRR(annuityCashFlows, annuityDates);
+
+//             result.innerHTML = `
+//                 Ежемесячный платёж (классическая схема): ${firstClassicPayment.toFixed(2)} грн.
+//                 <br> Общие процентные расходы по кредиту (классическая схема): ${classicInterestExpense.toFixed(2)} грн.
+//                 <br> Загальні витрати за кредитом (класическая схема): ${classicOverPayment.toFixed(2)} грн.
+//                 <br> Эффективная процентная ставка (классическая схема): ${(classicEffectiveRate * 100).toFixed(6)}%
+//                 <br><br>
+//                 Ежемесячный платёж (аннуитетная схема): ${annuityMonthlyPayment.toFixed(2)} грн.
+//                 <br> Общие процентные расходы по кредиту (аннуитетная схема): ${annuityInterestExpense.toFixed(2)} грн.
+//                 <br> Переплата по кредиту (аннуитетная схема): ${annuityOverPayment.toFixed(2)} грн.
+//                 <br> Эффективная процентная ставка (аннуитетная схема): ${(annuityEffectiveRate * 100).toFixed(6)}%
+//             `;
+//             result.style.display = 'block';
+
+//             classicMonthly.innerHTML = `${firstClassicPayment.toFixed(2)} - ${lastClassicPayment.toFixed(2)}`;
+//             classicInterest.innerHTML = classicInterestExpense.toFixed(2);
+//             classicOverpay.innerHTML = classicOverPayment.toFixed(2);
+//             document.getElementById("classicTotalCost").innerHTML = classicTotalCost.toFixed(2);
+//             annuityMonthly.innerHTML = annuityMonthlyPayment.toFixed(2);
+//             annuityInterest.innerHTML = annuityInterestExpense.toFixed(2);
+//             annuityOverpay.innerHTML = annuityOverPayment.toFixed(2);
+//             document.getElementById("annuityTotalCost").innerHTML = annuityTotalCost.toFixed(2);
+//             classicEffective.innerHTML = (classicEffectiveRate * 100).toFixed(6);
+//             annuityEffective.innerHTML = (annuityEffectiveRate * 100).toFixed(6);
+
+//             buildAmortizationTable("classic-loan-table", classicPayments);
+//             buildAmortizationTable("annuity-loan-table", annuityPayments);
+
+//             return {
+//                 amount: amount,
+//                 downpayment: downpayment,
+//                 principal: principal,
+//                 list: list,
+//                 notaryFee: notaryFee,
+//                 insuranceFee: insuranceFee,
+//                 commissionFee: commissionFee,
+//                 classicPayments: classicPayments,
+//                 classicTotalInterest: classicInterestExpense,
+//                 classicOverPayment: classicOverPayment,
+//                 classicTotalCost: classicTotalCost,
+//                 classicEffectiveRate: classicEffectiveRate,
+//                 annuityPayments: annuityPayments,
+//                 annuityTotalInterest: annuityInterestExpense,
+//                 annuityOverPayment: annuityOverPayment,
+//                 annuityTotalCost: annuityTotalCost,
+//                 annuityEffectiveRate: annuityEffectiveRate,
+//             };
+//         }
+
+//         function buildAmortizationTable(tableId, payments) {
+//             let tableBody = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+//             tableBody.innerHTML = "";
+//             let totalPrincipal = 0;
+//             let totalInterest = 0;
+
+//             payments.forEach((p, i) => {
+//                 let currentDate = new Date();
+//                 currentDate.setMonth(currentDate.getMonth() + i);
+//                 let monthName = currentDate.toLocaleString("uk-UA", { month: "long" });
+//                 totalPrincipal += p.principal;
+//                 totalInterest += p.interest;
+
+//                 let row = `
+//                     <tr class="loan-table__name-list">
+//                         <td class="loan-table__item">${p.month} (${monthName})</td>
+//                         <td class="loan-table__item">${p.payment.toFixed(2)}</td>
+//                         <td class="loan-table__item">${p.principal.toFixed(2)}</td>
+//                         <td class="loan-table__item">${p.interest.toFixed(2)}</td>
+//                         <td class="loan-table__item">${p.remaining.toFixed(2)}</td>
+//                     </tr>
+//                 `;
+//                 tableBody.innerHTML += row;
+//             });
+
+//             let totalRow = `
+//                 <tr class="loan-table__totals">
+//                     <td class="loan-table__item"><strong>СУМА:</strong></td>
+//                     <td class="loan-table__item"></td>
+//                     <td class="loan-table__item"><strong>${totalPrincipal.toFixed(2)}</strong></td>
+//                     <td class="loan-table__item"><strong>${totalInterest.toFixed(2)}</strong></td>
+//                     <td class="loan-table__item"></td>
+//                 </tr>
+//             `;
+//             tableBody.innerHTML += totalRow;
+//         }
+
+//         function clearFields() {
+//             let inputs = document.querySelectorAll("input");
+//             inputs.forEach((input) => {
+//                 input.value = "";
+//             });
+//             let selects = document.querySelectorAll("select");
+//             selects.forEach((select) => {
+//                 select.value = "";
+//             });
+//             let result = document.getElementById("result");
+//             result.innerHTML = "";
+//             let elementsToClear = [
+//                 "classicMonthlyPayment", "classicInterestExpense", "classicOverpayment", "classicEffectiveRate", "classicTotalCost",
+//                 "annuityMonthlyPayment", "annuityInterestExpense", "annuityOverpayment", "annuityEffectiveRate", "annuityTotalCost"
+//             ];
+//             elementsToClear.forEach(id => {
+//                 document.getElementById(id).innerHTML = "";
+//             });
+//             let infoBlock = document.querySelector(".form__result");
+//             infoBlock.style.display = "none";
+//             infoBlock.innerHTML = "";
+//             document.getElementById("btn-download").style.display = 'none';
+//             clearTableRows("classic-loan-table");
+//             clearTableRows("annuity-loan-table");
+//         }
+
+//         function clearTableRows(tableId) {
+//             let tableBody = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+//             tableBody.innerHTML = "";
+//         }
+
+//         function exportFullReport(data) {
+//             let wb = XLSX.utils.book_new();
+
+//             function setCellStyle(ws, cellRef, style) {
+//                 if (!ws[cellRef]) ws[cellRef] = {};
+//                 if (!ws[cellRef].s) ws[cellRef].s = {};
+//                 Object.assign(ws[cellRef].s, style);
+//             }
+
+//             let classicRows = [];
+
+//             classicRows.push(["", "Таблиця обчислення загальної вартості кредиту для споживача"]);
+
+//             classicRows.push([
+//                 "№ з/п", "Кількість днів у розрахунковому періоді", "Сума видачі кредиту / розрахункова дата платежу",
+//                 "Чист сума кредиту за договором / загальний кредит", "Сума платежу за розрахунковий період, грн.",
+//                 "Проценти", "Види платежів за додаткові та супутні послуги", "Реальна річна процентна ставка, %", "Загальна вартість кредиту, грн."
+//             ]);
+
+//             classicRows.push([
+//                 "", "", "", "", "",
+//                 "Сума за користування кредитом", "Сума за обслуговування заборгованості",
+//                 "Кредитодавця", "", "Кредитного посередника", "",
+//                 "Третіх осіб", "", "", "", "", ""
+//             ]);
+
+//             classicRows.push([
+//                 "№", "Кількість днів у розрахунковому періоді", "Дата платежу", "Сума кредиту", "Сума платежу", "Проценти", "",
+//                 "За обслуговування", "Комісія", "Інші послуги", "Комісія", "Інші збір",
+//                 "Послуги нотаріуса", "Послуги страхування", "Послуги оцінювача", "Інші послуги",
+//                 "Реальна річна процентна ставка", "Загальна вартість кредиту"
+//             ]);
+
+//             classicRows.push([
+//                 1, "", new Date(), data.principal, "", "", "",
+//                 0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
+//                 data.classicEffectiveRate * 100, data.classicTotalCost
+//             ]);
+
+//             let startDate = new Date();
+//             data.classicPayments.forEach((p, i) => {
+//                 let paymentDate = new Date(startDate);
+//                 paymentDate.setMonth(paymentDate.getMonth() + i + 1);
+//                 let row = [
+//                     p.month + 1,
+//                     "",
+//                     paymentDate,
+//                     p.remaining,
+//                     p.payment,
+//                     p.interest,
+//                     "",
+//                     "", "", "", "", "",
+//                     "", "", "", "",
+//                     "", ""
+//                 ];
+//                 classicRows.push(row);
+//             });
+
+//             classicRows.push([
+//                 "СУМА", "", "", data.principal, "",
+//                 data.classicTotalInterest, "", 0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
+//                 "", data.classicTotalCost
+//             ]);
+
+//             let wsClassic = XLSX.utils.aoa_to_sheet(classicRows);
+
+//             const BOLD_STYLE = { font: { bold: true } };
+//             const BORDER_STYLE = {
+//                 top: { style: "thin" },
+//                 bottom: { style: "thin" },
+//                 left: { style: "thin" },
+//                 right: { style: "thin" }
+//             };
+//             const HEADER_STYLE = {
+//                 font: { bold: true },
+//                 alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+//                 border: BORDER_STYLE
+//             };
+//             const TOTAL_STYLE = {
+//                 font: { bold: true },
+//                 border: BORDER_STYLE
+//             };
+//             const DATA_STYLE = { border: BORDER_STYLE };
+
+//             const headerRows = [0, 1, 2, 3];
+//             headerRows.forEach(R => {
+//                 const range = XLSX.utils.decode_range(wsClassic['!ref']);
+//                 for (let C = range.s.c; C <= range.e.c; ++C) {
+//                     const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+//                     setCellStyle(wsClassic, cellRef, HEADER_STYLE);
+//                 }
+//             });
+
+//             const dataStartRow = 4;
+//             const totalRow = classicRows.length - 1;
+//             const range = XLSX.utils.decode_range(wsClassic['!ref']);
+//             for (let R = dataStartRow; R < classicRows.length; ++R) {
+//                 for (let C = range.s.c; C <= range.e.c; ++C) {
+//                     const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+//                     if (wsClassic[cellRef]) {
+//                         if (R === totalRow) {
+//                             setCellStyle(wsClassic, cellRef, TOTAL_STYLE);
+//                         } else {
+//                             setCellStyle(wsClassic, cellRef, DATA_STYLE);
+//                         }
+//                     }
+//                 }
+//             }
+
+//             for (let R = dataStartRow; R < totalRow; ++R) {
+//                 const cellRef = XLSX.utils.encode_cell({ r: R, c: 2 });
+//                 if (wsClassic[cellRef]) {
+//                     wsClassic[cellRef].t = 'n';
+//                     wsClassic[cellRef].z = 'yyyy-mm-dd';
+//                 }
+//             }
+
+//             wsClassic["!merges"] = [
+//                 { s: { r: 0, c: 1 }, e: { r: 0, c: 17 } },
+//                 { s: { r: 1, c: 5 }, e: { r: 1, c: 6 } },
+//                 { s: { r: 1, c: 7 }, e: { r: 1, c: 15 } },
+//                 { s: { r: 1, c: 16 }, e: { r: 2, c: 16 } },
+//                 { s: { r: 1, c: 17 }, e: { r: 2, c: 17 } },
+//                 { s: { r: 2, c: 7 }, e: { r: 2, c: 9 } },
+//                 { s: { r: 2, c: 10 }, e: { r: 2, c: 11 } },
+//                 { s: { r: 2, c: 12 }, e: { r: 2, c: 15 } },
+//             ];
+//             XLSX.utils.book_append_sheet(wb, wsClassic, "Класика");
+
+//             let annuityRows = [];
+
+//             annuityRows.push(["", "Таблиця обчислення загальної вартості кредиту для споживача"]);
+//             annuityRows.push([
+//                 "№ з/п", "Кількість днів у розрахунковому періоді", "Сума видачі кредиту / розрахункова дата платежу",
+//                 "Чист сума кредиту за договором / загальний кредит", "Сума платежу за розрахунковий період, грн.",
+//                 "Проценти", "Види платежів за додаткові та супутні послуги", "Реальна річна процентна ставка, %", "Загальна вартість кредиту, грн."
+//             ]);
+//             annuityRows.push([
+//                 "", "", "", "", "",
+//                 "Сума за користування кредитом", "Сума за обслуговування заборгованості",
+//                 "Кредитодавця", "", "Кредитного посередника", "",
+//                 "Третіх осіб", "", "", "", "", ""
+//             ]);
+//             annuityRows.push([
+//                 "№", "Кількість днів у розрахунковому періоді", "Дата платежу", "Сума кредиту", "Сума платежу", "Проценти", "",
+//                 "За обслуговування", "Комісія", "Інші послуги", "Комісія", "Інші збір",
+//                 "Послуги нотаріуса", "Послуги страхування", "Послуги оцінювача", "Інші послуги",
+//                 "Реальна річна процентна ставка", "Загальна вартість кредиту"
+//             ]);
+
+//             annuityRows.push([
+//                 1, "", new Date(), data.principal, "", "", "",
+//                 0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
+//                 data.annuityEffectiveRate * 100, data.annuityTotalCost
+//             ]);
+
+//             data.annuityPayments.forEach((p, i) => {
+//                 let paymentDate = new Date(startDate);
+//                 paymentDate.setMonth(paymentDate.getMonth() + i + 1);
+//                 let row = [
+//                     p.month + 1,
+//                     "",
+//                     paymentDate,
+//                     p.remaining,
+//                     p.payment,
+//                     p.interest,
+//                     "",
+//                     "", "", "", "", "",
+//                     "", "", "", "",
+//                     "", ""
+//                 ];
+//                 annuityRows.push(row);
+//             });
+
+//             annuityRows.push([
+//                 "СУМА", "", "", data.principal, "",
+//                 data.annuityTotalInterest, "", 0, data.commissionFee, 0, 0, 0, data.notaryFee, data.insuranceFee, 0, 0,
+//                 "", data.annuityTotalCost
+//             ]);
+
+//             let wsAnnuity = XLSX.utils.aoa_to_sheet(annuityRows);
+
+//             headerRows.forEach(R => {
+//                 const range = XLSX.utils.decode_range(wsAnnuity['!ref']);
+//                 for (let C = range.s.c; C <= range.e.c; ++C) {
+//                     const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+//                     setCellStyle(wsAnnuity, cellRef, HEADER_STYLE);
+//                 }
+//             });
+
+//             for (let R = dataStartRow; R < annuityRows.length; ++R) {
+//                 for (let C = range.s.c; C <= range.e.c; ++C) {
+//                     const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+//                     if (wsAnnuity[cellRef]) {
+//                         if (R === annuityRows.length - 1) {
+//                             setCellStyle(wsAnnuity, cellRef, TOTAL_STYLE);
+//                         } else {
+//                             setCellStyle(wsAnnuity, cellRef, DATA_STYLE);
+//                         }
+//                     }
+//                 }
+//             }
+
+//             for (let R = dataStartRow; R < annuityRows.length - 1; ++R) {
+//                 const cellRef = XLSX.utils.encode_cell({ r: R, c: 2 });
+//                 if (wsAnnuity[cellRef]) {
+//                     wsAnnuity[cellRef].t = 'n';
+//                     wsAnnuity[cellRef].z = 'yyyy-mm-dd';
+//                 }
+//             }
+
+//             wsAnnuity["!merges"] = [
+//                 { s: { r: 0, c: 1 }, e: { r: 0, c: 17 } },
+//                 { s: { r: 1, c: 5 }, e: { r: 1, c: 6 } },
+//                 { s: { r: 1, c: 7 }, e: { r: 1, c: 15 } },
+//                 { s: { r: 1, c: 16 }, e: { r: 2, c: 16 } },
+//                 { s: { r: 1, c: 17 }, e: { r: 2, c: 17 } },
+//                 { s: { r: 2, c: 7 }, e: { r: 2, c: 9 } },
+//                 { s: { r: 2, c: 10 }, e: { r: 2, c: 11 } },
+//                 { s: { r: 2, c: 12 }, e: { r: 2, c: 15 } },
+//             ];
+//             XLSX.utils.book_append_sheet(wb, wsAnnuity, "Ануїтет");
+
+//             XLSX.writeFile(wb, "Приклад обчислення загальної вартості кредиту для споживача та реальної річної процентної ставки за договором про споживчий кредит.xlsx");
+//         }
+
+// //full table
 // let calcButton = document.getElementById("btn-result");
 
 // calcButton.onclick = function (event) {
@@ -745,13 +1434,13 @@ function exportFullReport(data) {
 
 //   // --- Create the main sheet (Класика) ---
 //   let classicRows = [];
-  
+
 //   // Row 1: Title
 //   classicRows.push(["", "Таблиця обчислення загальної вартості кредиту для споживача"]);
 //   // Row 2: Main headers
 //   classicRows.push([
 //     "№ з/п", "Кількість днів у розрахунковому періоді", "Сума видачі кредиту / розрахункова дата платежу",
-//     "Чист сума кредиту за договором / загальний кредит", "Сума платежу за розрахунковий період, грн.", 
+//     "Чист сума кредиту за договором / загальний кредит", "Сума платежу за розрахунковий період, грн.",
 //     "Проценти", "Види платежів за додаткові та супутні послуги", "Реальна річна процентна ставка, %", "Загальна вартість кредиту, грн."
 //   ]);
 //   // Row 3: Sub-headers
@@ -780,7 +1469,7 @@ function exportFullReport(data) {
 //   // Amortization data rows
 //   let classicTotalPrincipal = 0;
 //   let classicTotalInterest = 0;
-  
+
 //   data.classicPayments.forEach(p => {
 //     let row = [
 //       p.month + 1, // Number
@@ -823,7 +1512,7 @@ function exportFullReport(data) {
 
 //   // --- Create the Annuity sheet (Ануїтет) ---
 //   let annuityRows = [];
-  
+
 //   // Same headers as Classic
 //   annuityRows.push(["", "Таблиця обчислення загальної вартості кредиту для споживача"]);
 //   annuityRows.push([
@@ -855,7 +1544,7 @@ function exportFullReport(data) {
 //   // Amortization data rows
 //   let annuityTotalPrincipal = 0;
 //   let annuityTotalInterest = 0;
-  
+
 //   data.annuityPayments.forEach(p => {
 //     let row = [
 //       p.month + 1, // Number
@@ -898,7 +1587,6 @@ function exportFullReport(data) {
 
 //   XLSX.writeFile(wb, "Звіт_кредит.xlsx");
 // }
-
 
 // close var
 // let calcButton = document.getElementById("btn-result");
